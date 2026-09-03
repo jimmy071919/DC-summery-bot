@@ -110,14 +110,18 @@ async def run_summary(
         if not isinstance(source, discord.TextChannel) or not isinstance(output, discord.TextChannel):
             log.warning("Invalid channel setting for guild %s", configured_guild_id)
             if guild_id is not None:
-                raise PermissionError("Configured channels are not accessible")
+                raise PermissionError("Bot 找不到設定的來源或輸出頻道，請確認 Bot 已加入該伺服器且能檢視頻道")
             continue
         source_permissions = source.permissions_for(source.guild.me)
         output_permissions = output.permissions_for(output.guild.me)
-        if not source_permissions.view_channel or not source_permissions.read_message_history:
-            raise PermissionError("Source channel is not readable")
-        if not output_permissions.view_channel or not output_permissions.send_messages:
-            raise PermissionError("Output channel is not writable")
+        if not source_permissions.view_channel:
+            raise PermissionError(f"來源頻道 #{source.name} 缺少：檢視頻道")
+        if not source_permissions.read_message_history:
+            raise PermissionError(f"來源頻道 #{source.name} 缺少：讀取訊息歷史記錄")
+        if not output_permissions.view_channel:
+            raise PermissionError(f"輸出頻道 #{output.name} 缺少：檢視頻道")
+        if not output_permissions.send_messages:
+            raise PermissionError(f"輸出頻道 #{output.name} 缺少：傳送訊息")
         messages = await collect_messages(source, start, end)
         if not messages:
             result = "昨天沒有可摘要的訊息。"
@@ -166,8 +170,8 @@ async def main() -> None:
         await interaction.response.defer(ephemeral=True)
         try:
             await run_summary(bot, client, model, zone, interaction.guild_id)
-        except (discord.Forbidden, PermissionError):
-            await interaction.followup.send("Bot 沒有來源頻道的讀取權限或輸出頻道的發送權限。", ephemeral=True)
+        except (discord.Forbidden, PermissionError) as exc:
+            await interaction.followup.send(f"權限檢查失敗：{exc}", ephemeral=True)
         except Exception:
             log.exception("Manual summary test failed")
             await interaction.followup.send("測試失敗，請查看 Bot 日誌。", ephemeral=True)
