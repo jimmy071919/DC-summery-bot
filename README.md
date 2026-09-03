@@ -11,11 +11,25 @@
    - `OPENAI_API_KEY`：OpenAI API key
    - `TIMEZONE`、`SUMMARY_TIME`：每日摘要時間，預設為台北時間 00:05
 
-3. 執行：
+3. 使用 Docker Compose 啟動：
 
 ```bash
-uv run main.py
+docker compose up -d --build
 ```
+
+查看日誌：
+
+```bash
+docker compose logs -f bot
+```
+
+停止機器人：
+
+```bash
+docker compose down
+```
+
+摘要頻道設定會保存於主機的 `data/summary.db`。
 
 ## Discord 設定
 
