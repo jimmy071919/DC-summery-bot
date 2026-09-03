@@ -69,13 +69,15 @@ async def summarize(client: AsyncOpenAI, model: str, messages: str, day: date) -
             {
                 "role": "system",
                 "content": (
-                    "你是 Discord 社群摘要助手。請將訊息依主要話題分組，使用繁體中文摘要。"
-                    "每個話題以 Markdown 標題開頭，列出重點、重要決定、待辦事項；不要捏造訊息中沒有的內容。"
+                    "你是 Discord 社群內容整理與介紹助手。請使用繁體中文，將前一天的所有訊息依主要話題完整整理，"
+                    "並對每個話題進行詳細的介紹與描述，而不是只提供簡短摘要。說明討論背景、參與者的觀點、以及參與者的名稱也要提供"
+                    "事件或討論的發展、重要決定、問題、待辦事項與後續方向；不要遺漏有意義的內容，也不要捏造訊息中沒有的內容。"
+                    "每個話題以 Markdown 標題開頭，必要時依時間或事件順序呈現，清楚區分訊息中的事實與推測。"
                 ),
             },
             {
                 "role": "user",
-                "content": f"請摘要 {day.isoformat()} 的 Discord 訊息，共分話題整理：\n\n{messages}",
+                "content": f"請詳細介紹與描述 {day.isoformat()} 的 Discord 所有訊息，依話題完整整理，不要只做摘要：\n\n{messages}",
             },
         ],
     )
