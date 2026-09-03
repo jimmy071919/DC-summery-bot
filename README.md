@@ -9,7 +9,7 @@
 
    - `DISCORD_TOKEN`：Discord Bot Token
    - `OPENAI_API_KEY`：OpenAI API key
-   - `TIMEZONE`、`SUMMARY_TIME`：每日摘要時間，預設為台北時間 00:05
+   - `TIMEZONE`、`SUMMARY_TIME`：每日摘要時間，預設為台北時間 06:00
 
 3. 使用 Docker Compose 啟動：
 
