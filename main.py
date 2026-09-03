@@ -95,17 +95,29 @@ def split_for_discord(text: str, limit: int = 1900) -> list[str]:
     return chunks
 
 
-async def run_summary(bot: discord.Client, client: AsyncOpenAI, model: str, zone: ZoneInfo) -> None:
+async def run_summary(
+    bot: discord.Client, client: AsyncOpenAI, model: str, zone: ZoneInfo, guild_id: int | None = None
+) -> None:
     now = datetime.now(zone)
     yesterday = now.date() - timedelta(days=1)
     start = datetime.combine(yesterday, time.min, zone).astimezone(timezone.utc)
     end = datetime.combine(now.date(), time.min, zone).astimezone(timezone.utc)
-    for guild_id, source_id, output_id in get_settings():
+    for configured_guild_id, source_id, output_id in get_settings():
+        if guild_id is not None and configured_guild_id != guild_id:
+            continue
         source = bot.get_channel(source_id)
         output = bot.get_channel(output_id)
         if not isinstance(source, discord.TextChannel) or not isinstance(output, discord.TextChannel):
-            log.warning("Invalid channel setting for guild %s", guild_id)
+            log.warning("Invalid channel setting for guild %s", configured_guild_id)
+            if guild_id is not None:
+                raise PermissionError("Configured channels are not accessible")
             continue
+        source_permissions = source.permissions_for(source.guild.me)
+        output_permissions = output.permissions_for(output.guild.me)
+        if not source_permissions.view_channel or not source_permissions.read_message_history:
+            raise PermissionError("Source channel is not readable")
+        if not output_permissions.view_channel or not output_permissions.send_messages:
+            raise PermissionError("Output channel is not writable")
         messages = await collect_messages(source, start, end)
         if not messages:
             result = "昨天沒有可摘要的訊息。"
@@ -141,6 +153,26 @@ async def main() -> None:
         await interaction.response.send_message(
             f"已設定：讀取 {source.mention}，每日摘要發送到 {output.mention}。", ephemeral=True
         )
+
+    @tree.command(name="summary_test", description="立即測試一次昨日摘要")
+    @discord.app_commands.default_permissions(manage_guild=True)
+    async def summary_test(interaction: discord.Interaction) -> None:
+        if interaction.guild_id is None:
+            await interaction.response.send_message("這個指令只能在伺服器內使用。", ephemeral=True)
+            return
+        if not any(guild_id == interaction.guild_id for guild_id, _, _ in get_settings()):
+            await interaction.response.send_message("請先使用 /summary_setup 設定來源與輸出頻道。", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            await run_summary(bot, client, model, zone, interaction.guild_id)
+        except (discord.Forbidden, PermissionError):
+            await interaction.followup.send("Bot 沒有來源頻道的讀取權限或輸出頻道的發送權限。", ephemeral=True)
+        except Exception:
+            log.exception("Manual summary test failed")
+            await interaction.followup.send("測試失敗，請查看 Bot 日誌。", ephemeral=True)
+        else:
+            await interaction.followup.send("測試完成，請到設定的輸出頻道查看摘要。", ephemeral=True)
 
     @bot.event
     async def setup_hook() -> None:
