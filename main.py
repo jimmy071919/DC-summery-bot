@@ -128,11 +128,14 @@ async def main() -> None:
     @discord.app_commands.describe(source="要記錄的文字頻道", output="要發送摘要的文字頻道")
     async def summary_setup(
         interaction: discord.Interaction,
-        source: discord.TextChannel,
-        output: discord.TextChannel,
+        source: discord.abc.GuildChannel,
+        output: discord.abc.GuildChannel,
     ) -> None:
         if interaction.guild_id is None:
             await interaction.response.send_message("這個指令只能在伺服器內使用。", ephemeral=True)
+            return
+        if not isinstance(source, discord.TextChannel) or not isinstance(output, discord.TextChannel):
+            await interaction.response.send_message("來源與輸出都必須是文字頻道，不能選語音頻道、分類或討論串。", ephemeral=True)
             return
         save_settings(interaction.guild_id, source.id, output.id)
         await interaction.response.send_message(
